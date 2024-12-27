@@ -1,5 +1,6 @@
 const loginService = require('../controllers/auth/login.controller');
 const signup = require('../controllers/auth/signUp.controller');
+const teacherController = require('../controllers/teacher/teacher.controller');
 const router = require('express').Router();
 
 router.route('/signup').post(signup);
