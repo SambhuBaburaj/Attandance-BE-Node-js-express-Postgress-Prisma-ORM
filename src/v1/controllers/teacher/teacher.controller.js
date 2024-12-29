@@ -15,6 +15,7 @@ const getAllTeachers = asyncHandler(async (req, res) => {
       createdAt: true,
       updatedAt: true,
       tuition_center_id: req.user.role_id,
+      tuition_center_id:false
     },
   });
 

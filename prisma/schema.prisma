@@ -19,9 +19,11 @@ model attendance {
   created_at    DateTime? @default(now()) @db.Timestamp(6)
   updated_at    DateTime? @default(now()) @db.Timestamp(6)
   classes       classes?  @relation(fields: [class_id], references: [class_id], onDelete: NoAction, onUpdate: NoAction)
-  students      students? @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([student_id, class_id, date])
+  @@index([class_id, date], map: "idx_attendance_class_date")
+  @@index([date], map: "idx_attendance_date")
+  @@index([student_id, date], map: "idx_attendance_student_date")
 }
 
 model class_enrollments {
@@ -29,32 +31,17 @@ model class_enrollments {
   class_id        Int?
   student_id      Int?
   enrollment_date DateTime? @default(dbgenerated("CURRENT_DATE")) @db.Date
-  classes         classes?  @relation(fields: [class_id], references: [class_id], onDelete: NoAction, onUpdate: NoAction)
-  students        students? @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([class_id, student_id])
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model class_schedule {
-  schedule_id Int      @id @default(autoincrement())
-  class_id    Int?
-  teacher_id  Int?
-  day_of_week Int?
-  start_time  DateTime @db.Time(6)
-  end_time    DateTime @db.Time(6)
-  classes     classes? @relation(fields: [class_id], references: [class_id], onDelete: NoAction, onUpdate: NoAction)
-}
-
 model classes {
-  class_id          Int                 @id @default(autoincrement())
-  class_name        String              @db.VarChar(100)
-  description       String?
-  academic_year     String              @db.VarChar(9)
-  created_at        DateTime?           @default(now()) @db.Timestamp(6)
-  attendance        attendance[]
-  class_enrollments class_enrollments[]
-  class_schedule    class_schedule[]
+  class_id      Int          @id @default(autoincrement())
+  class_name    String       @db.VarChar(100)
+  description   String?
+  academic_year String       @db.VarChar(9)
+  created_at    DateTime?    @default(now()) @db.Timestamp(6)
+  attendance    attendance[]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -68,22 +55,24 @@ model leave_applications {
   approved_by Int?
   created_at  DateTime? @default(now()) @db.Timestamp(6)
   updated_at  DateTime? @default(now()) @db.Timestamp(6)
-  students    students? @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model students {
-  student_id         Int                  @id @default(autoincrement())
-  first_name         String               @db.VarChar(50)
-  last_name          String               @db.VarChar(50)
-  email              String?              @unique @db.VarChar(100)
-  roll_number        String               @unique @db.VarChar(20)
-  date_of_birth      DateTime?            @db.Date
-  phone_number       String?              @db.VarChar(15)
-  created_at         DateTime?            @default(now()) @db.Timestamp(6)
-  updated_at         DateTime?            @default(now()) @db.Timestamp(6)
-  attendance         attendance[]
-  class_enrollments  class_enrollments[]
-  leave_applications leave_applications[]
+  id                Int       @id @default(autoincrement())
+  name              String    @db.VarChar(255)
+  class             String    @db.VarChar(20)
+  division          String    @db.VarChar(10)
+  contact_no        String?   @db.VarChar(20)
+  address           String?
+  tuition_center_id Int
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime? @default(now()) @db.Timestamptz(6)
+  roll_number       String    @db.VarChar(20)
+  users             users     @relation(fields: [tuition_center_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([class, division], map: "idx_students_class_division")
+  @@index([roll_number], map: "idx_students_roll_number")
+  @@index([tuition_center_id], map: "idx_students_tuition_center")
 }
 
 model teachers {
@@ -104,6 +93,18 @@ model teachers {
   @@index([tuition_center_id], map: "idx_teachers_tuition_center")
 }
 
+model tuition_class {
+  id                Int       @id @default(autoincrement())
+  class             String    @db.VarChar(100)
+  division          String    @db.VarChar(50)
+  tuition_center_id Int
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime? @default(now()) @db.Timestamptz(6)
+  users             users     @relation(fields: [tuition_center_id], references: [id], onDelete: Cascade)
+
+  @@index([tuition_center_id], map: "idx_tuition_class_center_id")
+}
+
 model user_roles {
   id        Int     @id @default(autoincrement())
   role_name String  @unique @db.VarChar(50)
@@ -111,13 +112,15 @@ model user_roles {
 }
 
 model users {
-  id            Int        @id @default(autoincrement())
-  username      String     @db.VarChar(100)
-  email         String     @unique @db.VarChar(255)
+  id            Int             @id @default(autoincrement())
+  username      String          @db.VarChar(100)
+  email         String          @unique @db.VarChar(255)
   password_hash String
   role_id       Int
-  created_at    DateTime?  @default(now()) @db.Timestamp(6)
-  updated_at    DateTime?  @default(now()) @db.Timestamp(6)
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at    DateTime?       @default(now()) @db.Timestamp(6)
+  students      students[]
   teachers      teachers[]
-  user_roles    user_roles @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_role")
+  tuition_class tuition_class[]
+  user_roles    user_roles      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_role")
 }
